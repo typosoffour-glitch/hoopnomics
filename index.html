@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoopNomics | Basketball Expected Points Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f8fafc; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        input, select { background: #1e293b !important; border: 1px solid #334155 !important; }
+        .card { background: #131c2e; border: 1px solid #223049; }
+        .high-prob { color: #4ade80; font-weight: 700; text-shadow: 0 0 8px rgba(74, 222, 128, 0.3); }
+        .value-bet { background-color: rgba(22, 163, 74, 0.2); border-color: #16a34a !important; }
+        .no-value { background-color: rgba(239, 68, 68, 0.1); border-color: #dc2626 !important; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 border-b border-slate-800 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-orange-500">HoopNomics <span class="text-slate-500 font-light text-xl">v1.0</span></h1>
+                <p class="text-slate-400">Basketball Expected Points & Value Betting Model</p>
+            </div>
+            <div class="text-right text-xs text-slate-500 mono">Model: Gaussian Distribution</div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- INPUT PANEL -->
+            <div class="lg:col-span-1 space-y-6">
+                <section class="card p-6 rounded-xl shadow-xl">
+                    <h2 class="text-lg font-semibold mb-4 border-b border-slate-800 pb-2 text-orange-400">Team Statistics</h2>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Home Scored / G</label>
+                            <input id="home_scored" type="number" step="0.1" placeholder="e.g. 118.5" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Home Conceded / G</label>
+                            <input id="home_conceded" type="number" step="0.1" placeholder="e.g. 112.3" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Away Scored / G</label>
+                            <input id="away_scored" type="number" step="0.1" placeholder="e.g. 115.2" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Away Conceded / G</label>
+                            <input id="away_conceded" type="number" step="0.1" placeholder="e.g. 110.7" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                    </div>
+
+                    <h2 class="text-lg font-semibold mt-6 mb-4 border-b border-slate-800 pb-2 text-orange-400">League Benchmarks</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-xs text-slate-400 mb-1">League Avg Total Points (Both Teams)</label>
+                            <input id="league_avg" type="number" step="0.1" placeholder="e.g. 114.0" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Game Total StdDev (&sigma;)</label>
+                            <input id="std_dev" type="number" step="0.1" value="12.5" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Home Advantage</label>
+                            <input id="hca" type="number" step="0.1" value="3.0" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                    </div>
+
+                    <h2 class="text-lg font-semibold mt-6 mb-4 border-b border-slate-800 pb-2 text-orange-400">Bookmaker Market Lines</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Market Total Line</label>
+                            <input id="book_line" type="number" step="0.5" placeholder="e.g. 230.5" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Market Segment</label>
+                            <select id="book_segment" class="w-full p-2 rounded text-white outline-none focus:border-orange-500 text-sm h-[42px]">
+                                <option value="full">Full Game</option>
+                                <option value="h1">1st Half (H1)</option>
+                                <option value="q1">Single Quarter</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Odds OVER</label>
+                            <input id="odds_over" type="number" step="0.01" placeholder="e.g. 1.91" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">Odds UNDER</label>
+                            <input id="odds_under" type="number" step="0.01" placeholder="e.g. 1.91" class="w-full p-2 rounded text-white outline-none focus:border-orange-500">
+                        </div>
+                    </div>
+
+                    <button onclick="calculateBasketball()" class="w-full mt-8 bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg transition duration-200 uppercase tracking-wider">
+                        Analyze Value
+                    </button>
+                </section>
+            </div>
+
+            <!-- RESULTS PANEL -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card p-6 rounded-xl shadow-xl min-h-[500px] flex flex-col justify-between">
+                    
+                    <div id="placeholder" class="flex flex-col items-center justify-center my-auto text-slate-600">
+                        <svg class="w-16 h-16 mb-4 opacity-25 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p class="uppercase tracking-widest text-xs font-semibold">Awaiting statistical inputs...</p>
+                    </div>
+
+                    <div id="error-msg" class="hidden flex flex-col items-center justify-center my-auto text-red-400">
+                        <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <p id="error-text" class="text-sm font-semibold text-center px-4"></p>
+                    </div>
+
+                    <div id="results-area" class="hidden space-y-8">
+                        <!-- Projection Summary -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-800 pb-6">
+                            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                                <span class="text-xs text-slate-400 uppercase font-semibold">Home Projected</span>
+                                <p class="text-3xl font-bold text-slate-200 mono mt-1" id="proj-home">0.0</p>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                                <span class="text-xs text-slate-400 uppercase font-semibold">Away Projected</span>
+                                <p class="text-3xl font-bold text-slate-200 mono mt-1" id="proj-away">0.0</p>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-xl border border-orange-950/40 bg-orange-950/5">
+                                <span class="text-xs text-orange-400 uppercase font-semibold">Total Game Proj</span>
+                                <p class="text-3xl font-bold text-orange-400 mono mt-1" id="proj-total">0.0</p>
+                            </div>
+                        </div>
+
+                        <!-- Segment Breakdowns -->
+                        <div>
+                            <h3 class="text-slate-400 font-bold mb-3 uppercase tracking-wider text-xs">Fair Line Projections Matrix</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm mono">
+                                    <thead class="bg-slate-900 text-slate-400 border border-slate-800">
+                                        <tr>
+                                            <th class="p-3">Segment</th>
+                                            <th class="p-3">Home Line</th>
+                                            <th class="p-3">Away Line</th>
+                                            <th class="p-3 text-orange-400">Total Line</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="matrix-body" class="divide-y divide-slate-800/60 border-x border-b border-slate-800">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Market Value Scanner -->
+                        <div>
+                            <h3 class="text-slate-400 font-bold mb-3 uppercase tracking-wider text-xs">Active Market Value Evaluation</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                
+                                <!-- OVER BET ANALYSIS -->
+                                <div id="card-over" class="bg-slate-900/50 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-sm font-semibold text-slate-200">Option: OVER</span>
+                                            <span class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded mono" id="market-target-o"></span>
+                                        </div>
+                                        <div class="space-y-1 text-xs text-slate-400 mono mt-3">
+                                            <div class="flex justify-between"><span>Model Probability:</span><span class="text-slate-200 font-bold" id="prob-over">0%</span></div>
+                                            <div class="flex justify-between"><span>Model Fair Odds:</span><span class="text-slate-200 font-bold" id="fair-over">0.00</span></div>
+                                            <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1 text-sm"><span>Expected Value (EV):</span><span class="font-bold" id="ev-over">0.0%</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-2 text-center text-xs font-bold uppercase rounded p-1 tracking-wider" id="verdict-over">NO VALUE</div>
+                                </div>
+
+                                <!-- UNDER BET ANALYSIS -->
+                                <div id="card-under" class="bg-slate-900/50 p-5 rounded-xl border border-slate-800 flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-sm font-semibold text-slate-200">Option: UNDER</span>
+                                            <span class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded mono" id="market-target-u"></span>
+                                        </div>
+                                        <div class="space-y-1 text-xs text-slate-400 mono mt-3">
+                                            <div class="flex justify-between"><span>Model Probability:</span><span class="text-slate-200 font-bold" id="prob-under">0%</span></div>
+                                            <div class="flex justify-between"><span>Model Fair Odds:</span><span class="text-slate-200 font-bold" id="fair-under">0.00</span></div>
+                                            <div class="flex justify-between border-t border-slate-800/80 pt-1 mt-1 text-sm"><span>Expected Value (EV):</span><span class="font-bold" id="ev-under">0.0%</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-2 text-center text-xs font-bold uppercase rounded p-1 tracking-wider" id="verdict-under">NO VALUE</div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Mathematical Error Function Approximation for Normal Distribution CDF
+        function erf(x) {
+            const sign = x >= 0 ? 1 : -1;
+            x = Math.abs(x);
+            const a1 = 0.254829592;
+            const a2 = -0.284496736;
+            const a3 = 1.421413741;
+            const a4 = -1.453152027;
+            const a5 = 1.061405429;
+            const p = 0.3275911;
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            return sign * y;
+        }
+
+        // Standard Normal Cumulative Distribution Function Φ(x)
+        function normalCDF(x, mean, stdDev) {
+            if (stdDev <= 0) return x <= mean ? 0 : 1;
+            return 0.5 * (1 + erf((x - mean) / (stdDev * Math.sqrt(2))));
+        }
+
+        function getInputValue(id) {
+            const el = document.getElementById(id);
+            const val = parseFloat(el.value);
+            return isNaN(val) ? null : val;
+        }
+
+        function calculateBasketball() {
+            // Hide previous results and errors
+            document.getElementById('results-area').classList.add('hidden');
+            document.getElementById('error-msg').classList.add('hidden');
+            document.getElementById('placeholder').classList.add('hidden');
+
+            // --- Validate Required Inputs ---
+            const hScored = getInputValue('home_scored');
+            const hConceded = getInputValue('home_conceded');
+            const aScored = getInputValue('away_scored');
+            const aConceded = getInputValue('away_conceded');
+            const leagueAvg = getInputValue('league_avg');
+            const baseStdDev = getInputValue('std_dev');
+            const hca = getInputValue('hca');
+            const bookLine = getInputValue('book_line');
+            const oddsOver = getInputValue('odds_over');
+            const oddsUnder = getInputValue('odds_under');
+            const bookSegment = document.getElementById('book_segment').value;
+            const perTeamAvg = leagueAvg / 2;
+             
+            // Check for missing required fields
+            const requiredFields = [
+                { val: hScored, name: 'Home Scored' },
+                { val: hConceded, name: 'Home Conceded' },
+                { val: aScored, name: 'Away Scored' },
+                { val: aConceded, name: 'Away Conceded' },
+                { val: leagueAvg, name: 'League Avg Points' },
+                { val: baseStdDev, name: 'Std Deviation' },
+                { val: hca, name: 'Home Advantage' },
+                { val: bookLine, name: 'Market Total Line' },
+                { val: oddsOver, name: 'Odds OVER' },
+                { val: oddsUnder, name: 'Odds UNDER' }
+            ];
+
+            for (const field of requiredFields) {
+                if (field.val === null) {
+                    showError(`Please enter a valid number for <strong>${field.name}</strong>.`);
+                    return;
+                }
+            }
+
+            // Validate logical constraints
+            if (leagueAvg <= 0) {
+                showError('League Average Points must be greater than 0.');
+                return;
+            }
+            if (baseStdDev <= 0) {
+                showError('Standard Deviation must be greater than 0.');
+                return;
+            }
+            if (oddsOver <= 1 || oddsUnder <= 1) {
+                showError('Odds must be greater than 1.0 (decimal format).');
+                return;
+            }
+
+            // --- Core Calculations ---
+            let rawHomeX = (hScored / perTeamAvg) * (aConceded / perTeamAvg) * perTeamAvg;
+            let rawAwayX = (aScored / perTeamAvg) * (hConceded / perTeamAvg) * perTeamAvg;
+
+            let homeX = rawHomeX + (hca / 2);
+            let awayX = rawAwayX - (hca / 2);
+            let totalX = homeX + awayX;
+
+            // Update Primary Metrics DOM
+            document.getElementById('proj-home').innerText = homeX.toFixed(1);
+            document.getElementById('proj-away').innerText = awayX.toFixed(1);
+            document.getElementById('proj-total').innerText = totalX.toFixed(1);
+
+            // --- Segment Matrix ---
+            const segments = [
+                { name: 'Full Game', slug: 'full', factor: 1.0, sdFactor: 1.0 },
+                { name: '1st Half (H1)', slug: 'h1', factor: 0.495, sdFactor: 0.71 },
+                { name: '2nd Half (H2)', slug: 'h2', factor: 0.505, sdFactor: 0.72 },
+                { name: 'Single Quarter', slug: 'q1', factor: 0.25, sdFactor: 0.51 }
+            ];
+
+            let targetMean = totalX;
+            let targetStdDev = baseStdDev;
+
+            let htmlBuffer = "";
+            segments.forEach(seg => {
+                let sHome = homeX * seg.factor;
+                let sAway = awayX * seg.factor;
+                let sTotal = totalX * seg.factor;
+                
+                if (seg.slug === bookSegment) {
+                    targetMean = sTotal;
+                    targetStdDev = baseStdDev * seg.sdFactor;
+                }
+
+                htmlBuffer += `
+                    <tr class="hover:bg-slate-900/80 transition">
+                        <td class="p-3 font-semibold text-slate-400">${seg.name}</td>
+                        <td class="p-3 text-slate-200">${sHome.toFixed(1)}</td>
+                        <td class="p-3 text-slate-200">${sAway.toFixed(1)}</td>
+                        <td class="p-3 text-orange-400 font-bold">${sTotal.toFixed(1)}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('matrix-body').innerHTML = htmlBuffer;
+
+            // --- Value Probability Scanner ---
+            let pUnder = normalCDF(bookLine, targetMean, targetStdDev);
+            let pOver = 1 - pUnder;
+
+            // Avoid division by zero
+            let fairO = pOver > 0.0001 ? 1 / pOver : 9999;
+            let fairU = pUnder > 0.0001 ? 1 / pUnder : 9999;
+
+            // Expected Value
+            let evOver = (pOver * oddsOver) - 1;
+            let evUnder = (pUnder * oddsUnder) - 1;
+
+            // --- DOM Updates ---
+            document.getElementById('market-target-o').innerText = `Line: ${bookLine}`;
+            document.getElementById('market-target-u').innerText = `Line: ${bookLine}`;
+
+            document.getElementById('prob-over').innerText = `${(pOver * 100).toFixed(1)}%`;
+            document.getElementById('fair-over').innerText = fairO.toFixed(2);
+            document.getElementById('ev-over').innerText = `${(evOver * 100).toFixed(1)}%`;
+            document.getElementById('ev-over').className = evOver > 0 ? "text-green-400 font-bold text-sm" : "text-red-400 font-bold text-sm";
+
+            document.getElementById('prob-under').innerText = `${(pUnder * 100).toFixed(1)}%`;
+            document.getElementById('fair-under').innerText = fairU.toFixed(2);
+            document.getElementById('ev-under').innerText = `${(evUnder * 100).toFixed(1)}%`;
+            document.getElementById('ev-under').className = evUnder > 0 ? "text-green-400 font-bold text-sm" : "text-red-400 font-bold text-sm";
+
+            // --- Card Styling ---
+            formatCard('card-over', 'verdict-over', evOver);
+            formatCard('card-under', 'verdict-under', evUnder);
+
+            // Show results
+            document.getElementById('results-area').classList.remove('hidden');
+        }
+
+        function formatCard(cardId, verdictId, evValue) {
+            const card = document.getElementById(cardId);
+            const verdict = document.getElementById(verdictId);
+            
+            // Reset classes
+            card.classList.remove('value-bet', 'no-value');
+            
+            if (evValue > 0) {
+                card.classList.add('value-bet');
+                verdict.innerText = '✅ VALUE BET';
+                verdict.className = 'mt-4 pt-2 text-center text-xs font-bold uppercase rounded p-1 tracking-wider bg-green-900/60 text-green-300 border border-green-700';
+            } else {
+                card.classList.add('no-value');
+                verdict.innerText = '❌ NO VALUE';
+                verdict.className = 'mt-4 pt-2 text-center text-xs font-bold uppercase rounded p-1 tracking-wider bg-red-900/30 text-red-400 border border-red-800';
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('error-text').innerHTML = message;
+            document.getElementById('error-msg').classList.remove('hidden');
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('results-area').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
