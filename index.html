@@ -225,6 +225,14 @@
         }
 
         function calculateBasketball() {
+           // --- Save Inputs to LocalStorage ---
+           saveInputs();
+
+           // Hide previous results and errors
+           document.getElementById('results-area').classList.add('hidden');
+           document.getElementById('error-msg').classList.add('hidden');
+           document.getElementById('placeholder').classList.add('hidden');
+            
             // Hide previous results and errors
             document.getElementById('results-area').classList.add('hidden');
             document.getElementById('error-msg').classList.add('hidden');
@@ -358,6 +366,52 @@
             // Show results
             document.getElementById('results-area').classList.remove('hidden');
         }
+
+        // Function to save all current input values into the browser's memory
+function saveInputs() {
+    const fields = [
+        'home_scored', 'home_conceded', 'away_scored', 'away_conceded',
+        'league_avg', 'std_dev', 'hca', 'book_line', 'book_segment',
+        'odds_over', 'odds_under'
+    ];
+    
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            localStorage.setItem(`hoop_calc_${id}`, el.value);
+        }
+    });
+}
+
+// Function to pull saved values from memory and automatically fill the fields
+function loadInputs() {
+    const fields = [
+        'home_scored', 'home_conceded', 'away_scored', 'away_conceded',
+        'league_avg', 'std_dev', 'hca', 'book_line', 'book_segment',
+        'odds_over', 'odds_under'
+    ];
+    
+    let hasSavedData = false;
+    
+    fields.forEach(id => {
+        const savedValue = localStorage.getItem(`hoop_calc_${id}`);
+        const el = document.getElementById(id);
+        if (savedValue !== null && el) {
+            el.value = savedValue;
+            hasSavedData = true;
+        }
+    });
+
+    // Optional: Automatically trigger the math if data was restored
+    if (hasSavedData) {
+        calculateBasketball();
+    }
+}
+
+// Run the load function automatically every time the window finishes loading
+window.onload = loadInputs;
+                                   
+        
 
         function formatCard(cardId, verdictId, evValue) {
             const card = document.getElementById(cardId);
